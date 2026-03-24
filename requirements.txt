@@ -1,0 +1,15 @@
+# Görüntü İşleme ve Yapay Zeka (YOLO & OpenCV)
+opencv-python==4.9.0.80
+ultralytics==8.1.0
+easyocr==1.7.1
+
+# Kullanıcı Arayüzü
+PyQt5==5.15.10
+
+# Veri ve Matris İşlemleri
+numpy==1.26.4
+pandas==2.2.0
+
+# Test ve Yardımcı Araçlar
+pytest==8.0.0
+imutils==0.5.4
