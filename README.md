@@ -1,2 +1,2 @@
 # SmartCampus-ANPR
-denemeasdsadsadsa
+deneme deneme
