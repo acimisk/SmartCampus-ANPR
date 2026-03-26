@@ -1,2 +1,2 @@
 # SmartCampus-ANPR
-deneme deneme
+deneme ozellik
