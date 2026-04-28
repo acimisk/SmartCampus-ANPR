@@ -21,7 +21,7 @@ def run_anpr():
             break
 
         # conf=0.5 yaptık tekrar, çünkü artık kalitemiz yüksek
-        results = model(frame, stream=True, conf=0.5) 
+        results = model(frame, stream=True, conf=0.8) 
 
         for r in results:
             boxes = r.boxes
