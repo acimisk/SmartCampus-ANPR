@@ -1,12 +1,12 @@
 import sys
-import cv2
 import re
 import datetime
 import collections
+from ultralytics import YOLO
 from PyQt5.QtWidgets import QApplication, QTableWidgetItem
 from PyQt5.QtCore import QThread, pyqtSignal, Qt
 from PyQt5.QtGui import QImage, QPixmap
-from ultralytics import YOLO
+import cv2
 from dotenv import load_dotenv
 import easyocr
 import time
