@@ -70,26 +70,6 @@ class ANPRWorker(QThread):
                         cv2.rectangle(frame, (x1, y1 - 35), (x1 + w_text, y1), renk, -1)
                         # Siyah Yazı
                         cv2.putText(frame, yazi, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2, cv2.LINE_AA)
-
-                        # --- YENİ EKLENEN KISIM: CANLI CROP GÖSTERİMİ ---
-                        live_crop = frame[y1:y2, x1:x2] # O anki kutudan plakayı kes
-                        if live_crop.size > 0:
-                            c_h, c_w = live_crop.shape[:2]
-                            if c_h > 0 and c_w > 0:
-                                target_h = 60 # Crop'u ekranda daha rahat okunması için 60 piksel yüksekliğe sabitliyoruz
-                                target_w = int(c_w * (target_h / c_h))
-                                
-                                # Crop'un ekranda duracağı yerin koordinatları (Yazı kutusunun 10 piksel üstü)
-                                y_start = y1 - 45 - target_h
-                                y_end = y1 - 45
-                                x_end = x1 + target_w
-                                
-                                # Görüntü ekran sınırlarından dışarı taşmıyorsa çiz (Program çökmesini engeller)
-                                if y_start > 0 and x_end < frame.shape[1]:
-                                    scaled_crop = cv2.resize(live_crop, (target_w, target_h))
-                                    frame[y_start:y_end, x1:x_end] = scaled_crop
-                                    # Crop'un etrafına da durum renginde bir çerçeve atıyoruz şık dursun diye
-                                    cv2.rectangle(frame, (x1, y_start), (x_end, y_end), renk, 2)
                     
                     # --- KİLİT YOK (Tarama / Okuma Modu) ---
                     else:
@@ -124,7 +104,8 @@ class ANPRWorker(QThread):
                         tarih = datetime.datetime.now().strftime("%H:%M:%S")
                         
                         # İster yetkili ister yetkisiz olsun kaydı veritabanına atıyoruz
-                        self.plate_detected_signal.emit(most_common_plate, last_auth_status, tarih)
+                        # (Güvenlik kameraları ihlalleri de kaydeder)
+                        self.plate_detected_signal.emit(most_common_plate, tarih)
                         recent_candidates.clear()
 
             # GÖRÜNTÜYÜ ARAYÜZE GÖNDER
@@ -190,7 +171,7 @@ class SmartCampusApp(Arayuz):
             self.table.setItem(row, 0, QTableWidgetItem(plaka))
             self.table.setItem(row, 1, QTableWidgetItem(tarih))
 
-    def update_table(self, plaka, durum, tarih):
+    def update_table(self, plaka, tarih):
         # Arayüz tablosunda en son eklenen ile birebir aynıysa ekleme (Arayüz koruması)
         if self.table.rowCount() > 0:
             last_added = self.table.item(0, 0).text()
