@@ -17,7 +17,7 @@ from database.db_manager import DBManager
 
 class ANPRWorker(QThread):
     change_pixmap_signal = pyqtSignal(QImage)
-    plate_detected_signal = pyqtSignal(str, str)
+    plate_detected_signal = pyqtSignal(str, str, str)
 
     def run(self):
         import gc
@@ -185,7 +185,8 @@ class SmartCampusApp(Arayuz):
         search_text = self.search_input.text().upper().strip()
         self.table.insertRow(0)
         self.table.setItem(0, 0, QTableWidgetItem(plaka))
-        self.table.setItem(0, 1, QTableWidgetItem(tarih))
+        self.table.setItem(0, 1, QTableWidgetItem(durum))
+        self.table.setItem(0, 2, QTableWidgetItem(tarih))
         
         if search_text and search_text not in plaka.upper():
             self.table.setRowHidden(0, True)
