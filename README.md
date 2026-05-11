@@ -1,41 +1,41 @@
 # Smart Campus ANPR & Access Control System
 
-Bu proje, kampüs giriş-çıkışlarındaki araç geçişlerini izlemek ve yönetmek amacıyla geliştirilmiş otomatik plaka tanıma (ANPR) sistemidir. Sistem, video akışı üzerinden araç plakalarını gerçek zamanlı olarak tespit eder, metne dönüştürür ve geçiş yapılan tam saniye bilgisiyle birlikte veritabanına kaydeder. 
+This project is an automatic number plate recognition (ANPR) system developed to monitor and manage vehicle traffic at campus entrances and exits. The system detects vehicle plates in real-time from a video stream, converts them to text, and logs them in the database along with the exact second of passage.
 
-Geliştirilen kullanıcı arayüzü sayesinde, sistemde kayıtlı bir plaka sorgulanabilir ve video otomatik olarak aracın geçtiği ilgili saniyeye senkronize edilebilir.
+Thanks to the developed user interface, a registered plate can be queried in the system, and the video can automatically synchronize to the relevant second when the vehicle passed.
 
-## Temel Özellikler
-* Video akışı üzerinden özel eğitilmiş YOLO modeli ile dinamik araç ve plaka tespiti.
-* EasyOCR kullanılarak plaka üzerindeki karakterlerin metne (String) dönüştürülmesi.
-* Tespit edilen plakanın authorized/blacklist listeleriyle anlik karsilastirilmasi.
-* Tespit edilen plakaların, erisim durumu ve zaman bilgisiyle birlikte loglanmasi.
-* Modern PyQt5 dashboard ile canli video, son tespit bilgisi ve olay tablosu.
+## Core Features
+* Dynamic vehicle and plate detection from the video stream using a custom-trained YOLO model.
+* Conversion of characters on the plate into text (String) using EasyOCR.
+* Real-time comparison of the detected plate against authorized/blacklist records.
+* Logging of detected plates along with their access status and time information.
+* Modern PyQt5 dashboard featuring live video, recent detection info, and an event table.
 
-## Kullanılan Teknolojiler
-* **Dil:** Python 3.x
-* **Görüntü İşleme:** OpenCV
-* **Nesne Tespiti:** YOLO (Ultralytics)
-* **Karakter Tanıma:** EasyOCR
-* **Veritabanı:** MongoDB Atlas
-* **Arayüz:** PyQt5
+## Technologies Used
+* **Language:** Python 3.x
+* **Image Processing:** OpenCV
+* **Object Detection:** YOLO (Ultralytics)
+* **Character Recognition:** EasyOCR
+* **Database:** MongoDB Atlas
+* **GUI:** PyQt5
 
-## Ortam Degiskenleri
-`.env` dosyasina su degiskenleri eklenmelidir:
+## Environment Variables
+The following variables should be added to the `.env` file:
 
-- `MONGODB_URI`: MongoDB Atlas baglanti dizesi
-- `YOLO_MODEL_PATH` (opsiyonel): YOLO model dosya yolu (varsayilan: `campus_best.pt`)
-- `VIDEO_SOURCE` (opsiyonel): Video dosya yolu veya kamera indeksi (varsayilan: `kampus_test_videosu.mp4`)
-- `DETECT_EVERY_N_FRAMES` (opsiyonel): YOLO calisma araligi (varsayilan: `1`)
-- `OCR_EVERY_N_DETECTIONS` (opsiyonel): OCR calisma araligi (varsayilan: `1`)
-- `MAX_DETECTION_WIDTH` (opsiyonel): Tespit icin maksimum genislik (varsayilan: `1280`)
-- `DECISION_LOCK_SECONDS` (opsiyonel): Ayni plakanin tekrar loglanmasi icin bekleme suresi (varsayilan: `15`)
+- `MONGODB_URI`: MongoDB Atlas connection string
+- `YOLO_MODEL_PATH` (optional): YOLO model file path (default: `campus_best.pt`)
+- `VIDEO_SOURCE` (optional): Video file path or camera index (default: `kampus_test_videosu.mp4`)
+- `DETECT_EVERY_N_FRAMES` (optional): YOLO execution interval (default: `1`)
+- `OCR_EVERY_N_DETECTIONS` (optional): OCR execution interval (default: `1`)
+- `MAX_DETECTION_WIDTH` (optional): Maximum width for detection (default: `1280`)
+- `DECISION_LOCK_SECONDS` (optional): Cooldown time to prevent re-logging the same plate (default: `15`)
 
-## Erişim Listesi Yönetimi
-Yetkili ve kara liste plakalarini terminalden yonetmek icin:
+## Access List Management
+To manage authorized and blacklist plates from the terminal:
 
-- Ekleme:
+- Adding:
 `python -m database.manage_access_lists add authorized 34ABC123`
-- Kara listeye ekleme:
+- Adding to blacklist:
 `python -m database.manage_access_lists add blacklist 06XYZ789`
-- Listeden pasif etme:
+- Removing from the list:
 `python -m database.manage_access_lists remove authorized 34ABC123`
