@@ -86,11 +86,14 @@ class ANPRWorker(QThread):
                                     recent_candidates.append(full_text)
 
             # --- OYLAMA VE YETKİ KONTROLÜ ---
+            # Kilit süresi dolsa bile veya yeni bir araç geldiğinde oylama başlasın
             if current_time - last_log_time >= KILIT_SURESI:
                 if len(recent_candidates) >= 12:
                     most_common_plate, count = collections.Counter(recent_candidates).most_common(1)[0]
                     
                     if count >= 4:
+                        # Onay anındaki kutu koordinatlarını ve merkezini al (Ghosting kontrolü için)
+                        last_box_coords = (x1, y1, x2, y2)
                         last_logged_plate = most_common_plate
                         last_log_time = current_time
                         
@@ -102,10 +105,22 @@ class ANPRWorker(QThread):
                             
                         tarih = datetime.datetime.now().strftime("%H:%M:%S")
                         
-                        # İster yetkili ister yetkisiz olsun kaydı veritabanına atıyoruz
-                        # (Güvenlik kameraları ihlalleri de kaydeder)
-                        self.plate_detected_signal.emit(most_common_plate, tarih)
+                        # Arayüze ve DB'ye sinyal gönder
+                        self.plate_detected_signal.emit(most_common_plate, last_auth_status, tarih)
+                        
+                        # Yeni araç için aday listesini temizle
                         recent_candidates.clear()
+            
+            # --- EKSTRA GÜVENLİK: ARKA ARKAYA GELEN ARAÇ KONTROLÜ ---
+            # Eğer ekrandaki araç, az önce logladığımız araçtan 150 pikselden fazla uzaklaşmışsa
+            # kilidi erken kır ki arkadaki araç "AUTHORIZED" etiketiyle dolaşmasın.
+            elif last_log_time != 0:
+                old_center_x = (last_box_coords[0] + last_box_coords[2]) / 2
+                new_center_x = (x1 + x2) / 2
+                
+                if abs(new_center_x - old_center_x) > 150: # Araç değişti!
+                    last_log_time = 0 # Kilidi sıfırla, tarama moduna dön
+                    last_auth_status = "SCANNING"
 
             # GÖRÜNTÜYÜ ARAYÜZE GÖNDER
             rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
