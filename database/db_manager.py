@@ -119,8 +119,8 @@ class DBManager:
             print(f"Plaka listeden cikarilamadi: {e}")
             return False
 
-    def kaydet(self, plaka, tarih, durum="UNAUTHORIZED"):
-        """Bulut veritabanına yeni plaka kaydeder"""
+    def kaydet(self, plaka, tarih, durum="UNAUTHORIZED", plaka_gorseli=None):
+        """Bulut veritabanına yeni plaka kaydeder. plaka_gorseli: base64 JPEG string."""
         if self.collection is None:
             return False
 
@@ -130,7 +130,10 @@ class DBManager:
                 "plaka_no": normalized,
                 "tarih_saat": tarih,
                 "erisim_durumu": durum,
-                "kayit_tarihi": datetime.datetime.now()
+                "kayit_tarihi": datetime.datetime.now(),
+                "plaka_gorseli": plaka_gorseli,
+                "duzeltme_durumu": "beklemede",
+                "duzeltilmis_plaka": None,
             }
             self.collection.insert_one(veri)
             return True
@@ -158,6 +161,64 @@ class DBManager:
         except Exception as e:
             print(f"Veri cekilirken hata olustu: {e}")
             return []
+
+    def plaka_gorsellerini_getir(self, limit=30, duzeltme_filtre=None):
+        """Plaka görselleri ve denetim bilgilerini getirir."""
+        if self.collection is None:
+            return []
+        try:
+            query = {}
+            if duzeltme_filtre:
+                query["duzeltme_durumu"] = duzeltme_filtre
+            cursor = self.collection.find(query).sort("_id", -1).limit(limit)
+            results = []
+            for doc in cursor:
+                results.append({
+                    "id":               str(doc["_id"]),
+                    "plaka_no":         doc.get("plaka_no", ""),
+                    "tarih_saat":       doc.get("tarih_saat", ""),
+                    "erisim_durumu":    doc.get("erisim_durumu", "UNAUTHORIZED"),
+                    "plaka_gorseli":    doc.get("plaka_gorseli"),
+                    "duzeltme_durumu":  doc.get("duzeltme_durumu", "beklemede"),
+                    "duzeltilmis_plaka":doc.get("duzeltilmis_plaka"),
+                })
+            return results
+        except Exception as e:
+            print(f"Plaka görselleri alınamadı: {e}")
+            return []
+
+    def plaka_onayla(self, doc_id: str) -> bool:
+        """Plaka okumasını doğru olarak işaretle."""
+        if self.collection is None:
+            return False
+        try:
+            from bson import ObjectId
+            self.collection.update_one(
+                {"_id": ObjectId(doc_id)},
+                {"$set": {"duzeltme_durumu": "onaylandi"}},
+            )
+            return True
+        except Exception as e:
+            print(f"Plaka onaylanamadı: {e}")
+            return False
+
+    def plaka_duzelt(self, doc_id: str, duzeltilmis: str) -> bool:
+        """Yanlış okunan plakayı düzelt."""
+        if self.collection is None:
+            return False
+        try:
+            from bson import ObjectId
+            self.collection.update_one(
+                {"_id": ObjectId(doc_id)},
+                {"$set": {
+                    "duzeltilmis_plaka": self._normalize_plate(duzeltilmis),
+                    "duzeltme_durumu": "duzeltildi",
+                }},
+            )
+            return True
+        except Exception as e:
+            print(f"Plaka düzeltilemedi: {e}")
+            return False
 
     def loglardan_yetkili_oranini_ayarla(self, oran=0.9):
         if self.collection is None or self.authorized_collection is None:
