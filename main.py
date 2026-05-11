@@ -1,5 +1,4 @@
 import sys
-import cv2
 import re
 import datetime
 import collections
