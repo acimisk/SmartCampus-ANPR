@@ -50,33 +50,70 @@ class ANPRWorker(QThread):
                         x1, y1, x2, y2 = map(int, box.xyxy[0])
                         if (x2 - x1) < 100: continue
                         
-                        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 3)
-                        plate_crop = frame[y1:y2, x1:x2]
+# --- OCR OKUMA VE CROP SAKLAMA ---
+if frame_counter % 2 == 0:
+    plate_crop = frame[y1:y2, x1:x2]
 
-                        if plate_crop.size > 0:
-                            ocr_result = reader.readtext(plate_crop)
-                            full_text = "".join([re.sub(r'[^A-Z0-9]', '', t[1].upper()) for t in ocr_result])
-                            if 7 <= len(full_text) <= 9:
-                                recent_candidates.append(full_text)
-                                # Crop görselini base64 olarak sakla
-                                ok, jpeg = cv2.imencode('.jpg', plate_crop, [cv2.IMWRITE_JPEG_QUALITY, 90])
-                                if ok:
-                                    self.plate_images[full_text] = base64.b64encode(jpeg.tobytes()).decode('utf-8')
-                                # Bellek: en fazla 15 farklı aday sakla
-                                if len(self.plate_images) > 15:
-                                    oldest = next(iter(self.plate_images))
-                                    self.plate_images.pop(oldest)
+    if plate_crop.size > 0:
+        ocr_result = reader.readtext(plate_crop)
+        full_text = "".join([re.sub(r'[^A-Z0-9]', '', t[1].upper()) for t in ocr_result])
+        
+        if 7 <= len(full_text) <= 9:
+            recent_candidates.append(full_text)
+            
+            # RECEP'İN ŞOVU: Plaka resmini Base64 olarak sakla (Web/DB için lazım olabilir)
+            ok, jpeg = cv2.imencode('.jpg', plate_crop, [cv2.IMWRITE_JPEG_QUALITY, 90])
+            if ok:
+                import base64
+                self.plate_images[full_text] = base64.b64encode(jpeg.tobytes()).decode('utf-8')
+                # Belleği koru (Max 15 resim)
+                if len(self.plate_images) > 15:
+                    oldest = next(iter(self.plate_images))
+                    self.plate_images.pop(oldest)
 
-            # Oylama ve Sinyal
-            if len(recent_candidates) >= 15:
-                most_common_plate, count = collections.Counter(recent_candidates).most_common(1)[0]
-                if count >= 6 and most_common_plate != last_logged_plate:
-                    if time.time() - last_log_time > 8: 
+# --- OYLAMA VE YETKİ KONTROLÜ (MAIN'DEKİ GÜVENLİ MANTIK) ---
+if current_time - last_log_time >= KILIT_SURESI:
+    if len(recent_candidates) >= 12:
+        most_common_plate, count = collections.Counter(recent_candidates).most_common(1)[0]
+        
+        if count >= 4:
+            # Ghosting Kontrolü Koordinatları
+            last_box_coords = (x1, y1, x2, y2)
+            last_logged_plate = most_common_plate
+            last_log_time = time.time()
+            tarih = datetime.datetime.now().strftime("%H:%M:%S")
+
+            # Yetki Durumunu Belirle
+            if last_logged_plate in unauthorized_plates:
+                last_auth_status = "UNAUTHORIZED"
+            else:
+                last_auth_status = "AUTHORIZED"
+
+            # Arayüze ve DB'ye sinyal gönder (Hata almamak için 3 parametre şart)
+            self.plate_detected_signal.emit(most_common_plate, last_auth_status, tarih)
+            
+            # Listeyi temizle
+            recent_candidates.clear()
                         last_logged_plate = most_common_plate
                         last_log_time = time.time()
                         tarih = datetime.datetime.now().strftime("%H:%M:%S")
-                        self.plate_detected_signal.emit(most_common_plate, tarih)
+                        
+                        # Arayüze ve DB'ye sinyal gönder
+                        self.plate_detected_signal.emit(most_common_plate, last_auth_status, tarih)
+                        
+                        # Yeni araç için aday listesini temizle
                         recent_candidates.clear()
+            
+            # --- EKSTRA GÜVENLİK: ARKA ARKAYA GELEN ARAÇ KONTROLÜ ---
+            # Eğer ekrandaki araç, az önce logladığımız araçtan 150 pikselden fazla uzaklaşmışsa
+            # kilidi erken kır ki arkadaki araç "AUTHORIZED" etiketiyle dolaşmasın.
+            elif last_log_time != 0:
+                old_center_x = (last_box_coords[0] + last_box_coords[2]) / 2
+                new_center_x = (x1 + x2) / 2
+                
+                if abs(new_center_x - old_center_x) > 150: # Araç değişti!
+                    last_log_time = 0 # Kilidi sıfırla, tarama moduna dön
+                    last_auth_status = "SCANNING"
 
             # GÖRÜNTÜ AKTARIMI (Hızlandırılmış)
             rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
